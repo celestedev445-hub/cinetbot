@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CiteBot — Exact Web Answer Agent</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main>
+    <h1>CiteBot</h1>
+    <p class="sub">Exact Web Answer Agent — ask a precise question, get a cited value or a clear abstain. Works worldwide; point it at any page with a start URL.</p>
+    <form id="f">
+      <label>Question
+        <input name="question" required placeholder="What is the Pro plan monthly price?" />
+      </label>
+      <label>Start URL <span class="opt">(optional — any public page)</span>
+        <input name="start_url" type="url" placeholder="https://example.com/pricing" />
+      </label>
+      <button type="submit">Ask</button>
+    </form>
+    <section id="result" hidden>
+      <p id="sentence" class="sentence"></p>
+      <p id="source" class="source"></p>
+    </section>
+  </main>
+  <script>
+    const f = document.getElementById("f");
+    const result = document.getElementById("result");
+    const sentence = document.getElementById("sentence");
+    const source = document.getElementById("source");
+
+    function buildSentence(question, data) {
+      if (data.abstained || !data.answer) {
+        if (data.reason === "no_search_results") {
+          return "I need a company or product name in the question, or a Start URL pointing at the page to check.";
+        }
+        if (data.reason === "empty_question") {
+          return "Please enter a question.";
+        }
+        const why = data.reason ? ` (${data.reason})` : "";
+        return `I could not find a verified answer for “${question}” on the pages I checked${why}.`;
+      }
+      return `According to the page I checked, the answer to “${question}” is ${data.answer}.`;
+    }
+
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      result.hidden = false;
+      sentence.textContent = "Working…";
+      source.textContent = "";
+      const fd = new FormData(f);
+      const question = fd.get("question");
+      const start_url = (fd.get("start_url") || "").toString().trim();
+      const payload = { question };
+      if (start_url) payload.start_url = start_url;
+      try {
+        const r = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          sentence.textContent = data.detail ? JSON.stringify(data.detail) : "Request failed.";
+          return;
+        }
+        sentence.textContent = buildSentence(question, data);
+        if (data.source_url) {
+          source.innerHTML = `Source: <a href="${data.source_url}" target="_blank" rel="noopener">${data.source_url}</a>`;
+        } else if (data.hops && data.hops.length) {
+          source.textContent = `Pages checked: ${data.hops.join(" → ")}`;
+        } else {
+          source.textContent = "";
+        }
+      } catch (err) {
+        sentence.textContent = "Network error talking to the API.";
+      }
+    });
+  </script>
+</body>
+</html>
