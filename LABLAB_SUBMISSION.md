@@ -21,7 +21,7 @@ Stack: Python, FastAPI, httpx, BeautifulSoup4.
 Python, FastAPI, web agent, information retrieval, cite-or-abstain
 
 ## Public GitHub
-(to create) https://github.com/celestedev445-hub/citebot
+https://github.com/celestedev445-hub/cinetbot
 
 ## Demo URL
 Local: http://127.0.0.1:8080 after `uvicorn app.main:app --port 8080`
